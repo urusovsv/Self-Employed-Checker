@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "self-employed-checker"
+version = "1.1.0"
+description = "Проверка статуса самозанятого (плательщика НПД) через открытое API ФНС России."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { file = "LICENSE" }
+keywords = ["fns", "nalog", "self-employed", "npd", "inn", "tax"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Topic :: Office/Business :: Financial :: Accounting",
+]
+dependencies = ["requests>=2.25"]
+
+[tool.setuptools.packages.find]
+include = ["self_employed_checker*"]
+
+[tool.unittest]
+start-dir = "tests"
