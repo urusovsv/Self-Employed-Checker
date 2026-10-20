@@ -243,15 +243,17 @@ class SelfEmployedChecker:
             )
             response.raise_for_status()
             status = bool(response.json().get("status", False))
-            logger.debug("Статус ФНС для ИНН=%s дата=%s: %s",
-                         inn, normalized_date, status)
+            # PII-гигиена: в логи попадает только префикс ИНН (первые 4 цифры),
+            # полный номер налогоплательщика не должен оседать в лог-хранилищах.
+            logger.debug("Статус ФНС для ИНН=%s**** дата=%s: %s",
+                         inn[:4], normalized_date, status)
             return status
         except requests.exceptions.HTTPError as exc:
             return self._handle_http_error(exc.response, inn,
                                            raise_on_api_error)
         except requests.exceptions.RequestException as exc:
             # Покрывает Timeout, ConnectionError и любой другой сетевой сбой.
-            logger.warning("Запрос к ФНС завершился ошибкой для ИНН=%s: %s", inn, exc)
+            logger.warning("Запрос к ФНС завершился ошибкой для ИНН=%s****: %s", inn[:4], exc)
             if raise_on_api_error:
                 raise APIError(f"Сбой запроса к API ФНС: {exc}") from exc
             return False
@@ -333,8 +335,8 @@ class SelfEmployedChecker:
                 code = None
 
         message = self.ERROR_MESSAGES.get(code, "Неизвестная ошибка API")
-        logger.warning("Ошибка API ФНС для ИНН=%s: http=%s код=%s (%s)",
-                       inn,
+        logger.warning("Ошибка API ФНС для ИНН=%s****: http=%s код=%s (%s)",
+                       inn[:4],
                        response.status_code if response is not None else "?",
                        code, message)
 

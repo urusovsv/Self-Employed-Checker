@@ -1,0 +1,88 @@
+# Кастомные правила Semgrep: поиск SQL-инъекций, XSS, CSRF (OWASP A01/A03)
+rules:
+- id: sql-injection-string-concat
+  languages:
+  - python
+  severity: ERROR
+  message: Возможная SQL-инъекция — конкатенация/форматирование строк в SQL-запросе
+  metadata:
+    cwe: CWE-89
+    owasp: A03:2021 - Injection
+  patterns:
+  - pattern-either:
+    - pattern: $DB.execute("... " + $VAR + "...")
+    - pattern: $DB.execute(f"...{$VAR}...")
+    - pattern: $DB.execute((...) % $VAR)
+    - pattern: $DB.query(f"...{$VAR}...")
+- id: sql-library-usage
+  languages:
+  - python
+  severity: WARNING
+  message: Обнаружено использование SQL-библиотеки — проверить параметризацию всех
+    запросов
+  pattern-either:
+  - pattern: import sqlite3
+  - pattern: import psycopg2
+  - pattern: import mysql.connector
+  - pattern: from sqlalchemy import ...
+  - pattern: from sqlalchemy.orm import ...
+- id: xss-unescaped-html-output
+  languages:
+  - python
+  severity: ERROR
+  message: Возможная XSS — вывод пользовательского ввода в HTML без экранирования
+  metadata:
+    cwe: CWE-79
+    owasp: A03:2021 - Cross Site Scripting
+  pattern-either:
+  - pattern: markupsafe.Markup(...)
+  - pattern: jinja2.Template($T).render(...)
+  - pattern: render_template_string(f"...{$VAR}...")
+  - pattern: $RESP.html(f"...{$VAR}...")
+- id: template-engine-import
+  languages:
+  - python
+  severity: INFO
+  message: Обнаружен шаблонизатор/HTML-фреймворк — убедиться во включённом автоэкранировании
+  pattern-either:
+  - pattern: import jinja2
+  - pattern: from jinja2 import ...
+  - pattern: import markupsafe
+  - pattern: from flask import ...
+  - pattern: from django.shortcuts import ...
+- id: csrf-state-changing-endpoint
+  languages:
+  - python
+  severity: ERROR
+  message: POST/PUT/DELETE эндпоинт без CSRF-защиты (CSRFProtect / csrf_exempt проверка)
+  metadata:
+    cwe: CWE-352
+    owasp: A01:2021 - Broken Access Control
+  patterns:
+  - pattern-either:
+    - pattern: '@$APP.route("...", methods=[..., "POST", ...])'
+    - pattern: '@$APP.post(...)'
+    - pattern: '@$APP.put(...)'
+    - pattern: '@$APP.delete(...)'
+    - pattern: '@$APP.route(..., methods=("POST", ...))'
+  - pattern-not-inside: "def _placeholder():\n  csrf_protect()\n  ...\n"
+- id: insecure-cookie-settings
+  languages:
+  - python
+  severity: WARNING
+  message: Cookie сессии без HttpOnly/SameSite — риск CSRF/кражи сессии
+  pattern-either:
+  - pattern: $RESP.set_cookie(..., httponly=False, ...)
+  - pattern: $RESP.set_cookie(..., secure=False, ...)
+  - pattern: $RESP.set_cookie(..., samesite="None", ...)
+- id: external-http-call-review
+  languages:
+  - python
+  severity: INFO
+  message: Внешний HTTP-вызов — проверить HTTPS, верификацию TLS и отсутствие user-input
+    в URL
+  pattern-either:
+  - pattern: requests.get(...)
+  - pattern: requests.post(...)
+  - pattern: $SESSION.get(...)
+  - pattern: $SESSION.post(...)
